@@ -1,34 +1,41 @@
+using Microsoft.EntityFrameworkCore;
+using Faturamento.API.Data;
+using Faturamento.API.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+builder.Services.AddControllers();
+
+builder.Services.AddDbContext<FaturamentoDbContext>(options =>
+    options.UseSqlite("Data Source=faturamento.db"));
+
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
+// EstoqueClient usa HttpClient para chamar o Estoque.API
+builder.Services.AddHttpClient<EstoqueClient>(client =>
+{
+    var url = builder.Configuration["EstoqueServiceUrl"] ?? "http://localhost:5001";
+    client.BaseAddress = new Uri(url);
+});
+
+builder.Services.AddScoped<NotaFiscalService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-
-app.UseHttpsRedirection();
-
-var summaries = new[]
+using (var scope = app.Services.CreateScope())
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-});
-
-app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+    var db = scope.ServiceProvider.GetRequiredService<FaturamentoDbContext>();
+    db.Database.EnsureCreated();
 }
+
+app.UseCors();
+app.MapControllers();
+app.Run();
