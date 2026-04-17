@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Estoque.API.Data;
+using Estoque.API.Services; 
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +18,8 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod();
     });
 });
+
+builder.Services.AddScoped<ProdutoService>(); 
 
 var app = builder.Build();
 
