@@ -23,6 +23,13 @@ public class NotaFiscalService
             .ToListAsync();
     }
 
+    public async Task<NotaFiscal?> BuscarPorIdAsync(int id)
+{
+    return await _context.NotasFiscais
+        .Include(n => n.Itens)
+        .FirstOrDefaultAsync(n => n.Id == id);
+}
+
     public async Task<NotaFiscal> CriarAsync(CriarNotaRequest request)
     {
         // Gera o próximo número sequencial
