@@ -30,20 +30,40 @@ public class ProdutoService
         return produto;
     }
 
-    public async Task<bool> AtualizarSaldoAsync(int id, int quantidade)
+   public async Task<bool> AtualizarSaldoAsync(int id, int quantidade)
+{
+    // Inicia uma transação — garante que só uma operação acontece por vez
+    using var transaction = await _context.Database.BeginTransactionAsync();
+
+    try
     {
-        var produto = await _context.Produtos.FindAsync(id);
+        var produto = await _context.Produtos
+            .FromSqlRaw("SELECT * FROM Produtos WHERE Id = {0}", id)
+            .FirstOrDefaultAsync();
 
         if (produto == null)
+        {
+            await transaction.RollbackAsync();
             return false;
+        }
 
         if (produto.Saldo < quantidade)
+        {
+            await transaction.RollbackAsync();
             return false;
+        }
 
         produto.Saldo -= quantidade;
         await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
         return true;
     }
+    catch
+    {
+        await transaction.RollbackAsync();
+        throw;
+    }
+}
 
     public async Task<bool> CodigoJaExisteAsync(string codigo)
     {

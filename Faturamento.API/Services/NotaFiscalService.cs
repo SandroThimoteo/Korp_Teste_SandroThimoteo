@@ -24,11 +24,11 @@ public class NotaFiscalService
     }
 
     public async Task<NotaFiscal?> BuscarPorIdAsync(int id)
-{
-    return await _context.NotasFiscais
-        .Include(n => n.Itens)
-        .FirstOrDefaultAsync(n => n.Id == id);
-}
+    {
+        return await _context.NotasFiscais
+            .Include(n => n.Itens)
+            .FirstOrDefaultAsync(n => n.Id == id);
+    }
 
     public async Task<NotaFiscal> CriarAsync(CriarNotaRequest request)
     {
@@ -56,28 +56,49 @@ public class NotaFiscalService
 
     public async Task<NotaFiscal> ImprimirAsync(int id)
     {
-        var nota = await _context.NotasFiscais
-            .Include(n => n.Itens)
-            .FirstOrDefaultAsync(n => n.Id == id);
+        using var transaction = await _context.Database.BeginTransactionAsync();
 
-        if (nota == null)
-            throw new Exception("Nota fiscal não encontrada.");
-
-        if (nota.Status != "Aberta")
-            throw new Exception("Somente notas com status 'Aberta' podem ser impressas.");
-
-        // Baixa o saldo de cada produto no Estoque.API
-        foreach (var item in nota.Itens)
+        try
         {
-            var sucesso = await _estoqueClient.BaixarSaldoAsync(item.ProdutoId, item.Quantidade);
+            var nota = await _context.NotasFiscais
+                .Include(n => n.Itens)
+                .FirstOrDefaultAsync(n => n.Id == id);
 
-            if (!sucesso)
-                throw new Exception($"Saldo insuficiente para o produto {item.ProdutoDescricao}.");
+            if (nota == null)
+                throw new Exception("Nota fiscal não encontrada.");
+
+            if (nota.Status != "Aberta")
+                throw new Exception("Somente notas com status 'Aberta' podem ser impressas.");
+
+            // Idempotência — evita duplo processamento
+            if (nota.EmProcessamento)
+                throw new Exception("Esta nota já está sendo processada. Aguarde.");
+
+            // Marca como em processamento
+            nota.EmProcessamento = true;
+            await _context.SaveChangesAsync();
+
+            // Baixa o saldo de cada produto
+            foreach (var item in nota.Itens)
+            {
+                var sucesso = await _estoqueClient.BaixarSaldoAsync(item.ProdutoId, item.Quantidade);
+
+                if (!sucesso)
+                    throw new Exception($"Saldo insuficiente para o produto {item.ProdutoDescricao}.");
+            }
+
+            nota.Status = "Fechada";
+            nota.EmProcessamento = false;
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return nota;
         }
-
-        nota.Status = "Fechada";
-        await _context.SaveChangesAsync();
-        return nota;
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 }
 
