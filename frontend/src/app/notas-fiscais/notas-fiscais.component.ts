@@ -9,6 +9,7 @@ interface ItemForm {
   produtoId: number;
   produtoDescricao: string;
   quantidade: number;
+  sugerindo: boolean;
 }
 
 @Component({
@@ -27,24 +28,33 @@ interface ItemForm {
     <div class="card">
       <p class="card__title">Nova Nota Fiscal</p>
 
-      <div *ngFor="let item of itensForm; let i = index" class="item-row">
-        <div class="form-group">
-          <label class="form-label">Produto</label>
-          <select class="form-input" [(ngModel)]="item.produtoId" (change)="onProdutoSelecionado(item)">
-            <option [value]="0" disabled>Selecione...</option>
-            <option *ngFor="let p of produtos" [value]="p.id">
-              {{ p.codigo }} — {{ p.descricao }} (saldo: {{ p.saldo }})
-            </option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Quantidade</label>
-          <input class="form-input" type="number" [(ngModel)]="item.quantidade" min="1">
-        </div>
-        <div class="form-group" style="justify-content: flex-end">
-          <button class="btn btn-ghost btn-sm" (click)="removerItem(i)" style="margin-top: 20px">✕</button>
-        </div>
-      </div>
+<div *ngFor="let item of itensForm; let i = index" class="item-row">
+  <div class="form-group">
+    <label class="form-label">Produto</label>
+    <select class="form-input" [(ngModel)]="item.produtoId" (change)="onProdutoSelecionado(item)">
+      <option [value]="0" disabled>Selecione...</option>
+      <option *ngFor="let p of produtos" [value]="p.id">
+        {{ p.codigo }} — {{ p.descricao }} (saldo: {{ p.saldo }})
+      </option>
+    </select>
+  </div>
+  <div class="form-group">
+    <label class="form-label">Quantidade</label>
+    <input class="form-input" type="number" [(ngModel)]="item.quantidade" min="1">
+  </div>
+  <div class="form-group" style="justify-content: flex-end">
+    <button
+      class="btn btn-ghost btn-sm"
+      style="margin-top: 20px"
+      [disabled]="item.sugerindo || item.produtoId === 0"
+      (click)="sugerirQuantidade(item)"
+      title="Sugerir quantidade com IA">
+      <span *ngIf="item.sugerindo" class="spinner"></span>
+      <span *ngIf="!item.sugerindo">✨</span>
+    </button>
+    <button class="btn btn-ghost btn-sm" (click)="removerItem(i)" style="margin-top: 4px">✕</button>
+  </div>
+</div>
 
       <div style="display:flex; gap: 10px; margin-top: 8px;">
         <button class="btn btn-ghost btn-sm" (click)="adicionarItem()">+ Adicionar item</button>
@@ -113,7 +123,7 @@ export class NotasFiscaisComponent implements OnInit {
 
   notas: NotaFiscal[] = [];
   produtos: Produto[] = [];
-  itensForm: ItemForm[] = [{ produtoId: 0, produtoDescricao: '', quantidade: 1 }];
+  itensForm: ItemForm[] = [{ produtoId: 0, produtoDescricao: '', quantidade: 1, sugerindo: false }];
 
   carregando = false;
   salvando = false;
@@ -126,7 +136,7 @@ export class NotasFiscaisComponent implements OnInit {
   constructor(
     private notaService: NotaFiscalService,
     private produtoService: ProdutoService
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.carregarNotas();
@@ -157,7 +167,7 @@ export class NotasFiscaisComponent implements OnInit {
   }
 
   adicionarItem(): void {
-    this.itensForm.push({ produtoId: 0, produtoDescricao: '', quantidade: 1 });
+    this.itensForm.push({ produtoId: 0, produtoDescricao: '', quantidade: 1, sugerindo: false });
   }
 
   removerItem(index: number): void {
@@ -185,7 +195,7 @@ export class NotasFiscaisComponent implements OnInit {
     this.notaService.criar({ itens: itensValidos }).subscribe({
       next: (nota) => {
         this.notas = [nota, ...this.notas];
-        this.itensForm = [{ produtoId: 0, produtoDescricao: '', quantidade: 1 }];
+        this.itensForm = [{ produtoId: 0, produtoDescricao: '', quantidade: 1, sugerindo: false }];
         this.mensagemSucesso = `Nota Fiscal #${nota.numero} criada com sucesso!`;
         this.salvando = false;
         setTimeout(() => (this.mensagemSucesso = ''), 3000);
@@ -196,6 +206,25 @@ export class NotasFiscaisComponent implements OnInit {
       }
     });
   }
+
+  sugerirQuantidade(item: ItemForm): void {
+  const produto = this.produtos.find(p => p.id === Number(item.produtoId));
+  if (!produto) return;
+
+  item.sugerindo = true;
+
+  this.notaService.sugerirQuantidade(produto.descricao, this.notas).subscribe({
+    next: (quantidade) => {
+      item.quantidade = quantidade;
+      item.sugerindo = false;
+      this.mensagemSucesso = `✨ IA sugeriu ${quantidade} unidade(s) para ${produto.descricao}`;
+      setTimeout(() => (this.mensagemSucesso = ''), 3000);
+    },
+    error: () => {
+      item.sugerindo = false;
+    }
+  });
+}
 
   imprimir(nota: NotaFiscal): void {
     this.mensagemErro = '';
@@ -217,6 +246,8 @@ export class NotasFiscaisComponent implements OnInit {
     });
   }
   totalItens(nota: NotaFiscal): number {
-  return nota.itens.reduce((total, item) => total + item.quantidade, 0);
-}
+    return nota.itens.reduce((total, item) => total + item.quantidade, 0);
+  }
+
+  
 }
