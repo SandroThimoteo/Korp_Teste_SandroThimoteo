@@ -10,6 +10,7 @@ services:
       - "5001:5001"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5001
 
   faturamento-api:
     build:
@@ -19,6 +20,7 @@ services:
       - "5002:5002"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5002
       - EstoqueServiceUrl=http://estoque-api:5001
     depends_on:
       - estoque-api
