@@ -86,9 +86,9 @@ interface ItemForm {
                   {{ nota.status }}
                 </span>
               </td>
-              <td style="color: var(--text-dim)">{{ nota.itens.length }} produto(s)</td>
+              <td style="color: var(--text-dim)">{{ totalItens(nota) }} unidade(s)</td>
               <td style="color: var(--text-dim); font-family: var(--mono); font-size: 12px">
-                {{ nota.criadaEm | date:'dd/MM/yyyy HH:mm' }}
+                {{ nota.criadaEm | date:'dd/MM/yyyy HH:mm':'America/Sao_Paulo' }}
               </td>
               <td>
                 <button
@@ -216,4 +216,7 @@ export class NotasFiscaisComponent implements OnInit {
       }
     });
   }
+  totalItens(nota: NotaFiscal): number {
+  return nota.itens.reduce((total, item) => total + item.quantidade, 0);
+}
 }
