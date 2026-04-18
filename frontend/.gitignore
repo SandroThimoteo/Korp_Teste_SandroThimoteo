@@ -42,5 +42,5 @@ testem.log
 Thumbs.db
 
 
-# Chave de API Anthropic
+# Chave de API Gemini
 src/environments/
