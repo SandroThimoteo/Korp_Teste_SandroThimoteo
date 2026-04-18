@@ -137,6 +137,17 @@ docker stop estoque-api
 
 ---
 
+## Requisitos opcionais implementados
+
+### Tratamento de Concorrência
+Transação com lock pessimista em `ProdutoService.cs` — garante que dois usuários não consigam baixar o mesmo saldo simultaneamente.
+
+### Idempotência
+Campo `EmProcessamento` em `NotaFiscal` — impede que a mesma nota seja processada duas vezes ao mesmo tempo.
+
+### Inteligência Artificial
+Botão ✨ na criação de notas fiscais — ao clicar, o Claude Haiku analisa o histórico de quantidades usadas para aquele produto e sugere a quantidade ideal para a próxima nota.
+
 ## Estrutura de pastas
 
 ```
