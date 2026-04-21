@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { NotaFiscal } from '../shared/models';
-import { environment } from '../../environments/environment';
+import { environment } from '../../environments/environments';
 
 export interface CriarNotaRequest {
   itens: { produtoId: number; produtoDescricao: string; quantidade: number }[];
