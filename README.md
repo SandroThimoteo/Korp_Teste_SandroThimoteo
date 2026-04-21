@@ -31,6 +31,28 @@ docker-compose down
 
 ---
 
+## Configuração da IA (Google Gemini)
+
+A funcionalidade de sugestão de quantidade usa a API do Google Gemini. Para utilizá-la:
+
+1. Acesse [aistudio.google.com](https://aistudio.google.com)
+2. Faça login com sua conta Google
+3. Clique em **Get API Key** → **Create API key**
+4. Copie a chave gerada
+5. Crie o arquivo `frontend/src/environments/environment.ts` com o seguinte conteúdo:
+
+```typescript
+export const environment = {
+  geminiKey: 'SUA_CHAVE_AQUI'
+};
+```
+
+> Este arquivo está no `.gitignore` por segurança — nunca é enviado ao GitHub.
+
+Sem esse arquivo, o botão ✨ retorna a sugestão padrão de 1 unidade sem chamar a IA.
+
+---
+
 ## Arquitetura
 
 O sistema é composto por dois microsserviços independentes que se comunicam via HTTP:
@@ -119,6 +141,19 @@ Itens = request.Itens.Select(i => new ItemNota { ... }).ToList()
 
 ---
 
+## Requisitos opcionais implementados
+
+### Tratamento de Concorrência
+Transação com lock pessimista em `ProdutoService.cs` — garante que dois usuários não consigam baixar o mesmo saldo simultaneamente.
+
+### Idempotência
+Campo `EmProcessamento` em `NotaFiscal` — impede que a mesma nota seja processada duas vezes ao mesmo tempo.
+
+### Inteligência Artificial
+Botão ✨ na criação de notas fiscais — ao clicar, o Google Gemini analisa o histórico de quantidades usadas para aquele produto e sugere a quantidade ideal para a próxima nota.
+
+---
+
 ## Tratamento de falhas
 
 Se o **Estoque.API** ficar indisponível durante uma impressão:
@@ -133,20 +168,11 @@ Para simular:
 ```bash
 docker stop estoque-api
 # Tente imprimir uma nota — o erro aparece na tela
+docker start estoque-api
+# Sistema se recupera automaticamente
 ```
 
 ---
-
-## Requisitos opcionais implementados
-
-### Tratamento de Concorrência
-Transação com lock pessimista em `ProdutoService.cs` — garante que dois usuários não consigam baixar o mesmo saldo simultaneamente.
-
-### Idempotência
-Campo `EmProcessamento` em `NotaFiscal` — impede que a mesma nota seja processada duas vezes ao mesmo tempo.
-
-### Inteligência Artificial
-Botão ✨ na criação de notas fiscais — ao clicar, o Gemini analisa o histórico de quantidades usadas para aquele produto e sugere a quantidade ideal para a próxima nota.
 
 ## Estrutura de pastas
 
@@ -169,6 +195,8 @@ Korp_Teste_SandroThimoteo/
 │   │   ├── produtos/
 │   │   ├── notas-fiscais/
 │   │   └── shared/
+│   ├── src/environments/
+│   │   └── environment.ts  (não versionado — ver seção de configuração da IA)
 │   ├── Dockerfile
 │   └── nginx.conf
 └── docker-compose.yml
